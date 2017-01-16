@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
+import android.widget.Button;
 import android.widget.SimpleAdapter;
 
 import java.util.ArrayList;
@@ -29,9 +30,9 @@ public class SmsMainActivity extends Activity{
 
         listOfContacts = getAllContacts();
         contactsTextView = (AutoCompleteTextView) findViewById(R.id.toText);
-        contactsTextView.setAdapter(new SimpleAdapter(getApplicationContext(),listOfContacts, R.layout.contacts_layout,
-                new String[] { "Name", "Phone"}, new int[] {
-                R.id.contactName, R.id.contactPhone }));
+        contactsTextView.setAdapter(new SimpleAdapter(getApplicationContext(), listOfContacts, R.layout.contacts_layout,
+                new String[]{"Name", "Phone"}, new int[]{
+                R.id.contactName, R.id.contactPhone}));
 
         contactsTextView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
@@ -48,6 +49,16 @@ public class SmsMainActivity extends Activity{
 
 
         });
+        Button send = (Button) findViewById(R.id.send_button);
+        send.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                
+
+            }
+        });
+
+
     }
 
 

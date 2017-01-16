@@ -21,7 +21,7 @@
         android:layout_alignParentStart="true"
         android:gravity="center"/>
 
-    <TextView
+    <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/smsTextView"
@@ -30,6 +30,15 @@
         android:height="200dp"
         android:paddingTop="100dp"
         android:width="300dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Send"
+        android:id="@+id/send_button"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="63dp" />
 
 
 </RelativeLayout>
