@@ -24,7 +24,7 @@
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/smsTextView"
+        android:id="@+id/smsTextField"
         android:layout_below="@+id/toText"
         android:layout_centerHorizontal="true"
         android:height="200dp"

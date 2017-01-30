@@ -4,16 +4,22 @@ import android.app.Activity;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.SimpleAdapter;
+import android.widget.Toast;
 
+import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
+import crypto.RSA;
 
 /**
  * Created by mp_13 on 1/8/2017.
@@ -53,12 +59,42 @@ public class SmsMainActivity extends Activity{
         send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                
+                EditText textEdit = (EditText)findViewById(R.id.smsTextField);
+                if(!textEdit.getText().toString().isEmpty()){
+
+                    KeyPair keyPair = RSA.generate();
+                    String encryptedText = RSA.encryptToBase64(keyPair.getPublic(), textEdit.getText().toString());
+
+                    Log.d("Encrypted", encryptedText);
+                    Log.d("Decrypted",RSA.decryptFromBase64(keyPair.getPrivate(), encryptedText));
+
+                    sendSMS(encryptedText,"5556");
+
+                }
 
             }
         });
 
 
+
+
+    }
+
+    void sendSMS(String text,String number)
+    {
+
+        try {
+            SmsManager sms = SmsManager.getDefault();
+            sms.sendTextMessage(number, null, text, null, null);
+            Toast.makeText(getApplicationContext(),"SMS Sent",Toast.LENGTH_LONG).show();
+        }catch (Exception e ){
+            Toast.makeText(getApplicationContext(),"SMS Failed sending",Toast.LENGTH_LONG).show();
+        }
+
+
+
+// last two parameters in sendTextMessage method are PendingInten
+// sentIntent & deliveryIntent.
     }
 
 
