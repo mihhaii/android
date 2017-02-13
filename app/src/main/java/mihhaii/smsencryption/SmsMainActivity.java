@@ -1,9 +1,14 @@
 package mihhaii.smsencryption;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
@@ -14,6 +19,8 @@ import android.widget.EditText;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+
+
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +28,7 @@ import java.util.Map;
 
 import crypto.RSA;
 
+import static android.Manifest.permission.READ_CONTACTS;
 /**
  * Created by mp_13 on 1/8/2017.
  */
@@ -28,13 +36,19 @@ public class SmsMainActivity extends Activity{
 
     private AutoCompleteTextView contactsTextView;
     private ArrayList<Map<String,String>> listOfContacts;
+    private static final int REQUEST_READ_CONTACTS = 13;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.sms_main);
 
-        listOfContacts = getAllContacts();
+        if (mayRequestContacts()){
+            listOfContacts=getAllContacts();
+        }
+
         contactsTextView = (AutoCompleteTextView) findViewById(R.id.toText);
         contactsTextView.setAdapter(new SimpleAdapter(getApplicationContext(), listOfContacts, R.layout.contacts_layout,
                 new String[]{"Name", "Phone"}, new int[]{
@@ -122,5 +136,38 @@ public class SmsMainActivity extends Activity{
             Log.e("getAllContactNames()", e.getMessage());
         }
         return contactList;
+    }
+
+    private boolean mayRequestContacts() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
+        if (checkSelfPermission(READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
+            Snackbar.make(findViewById(R.id.mainLayout), R.string.permission_rationale, Snackbar.LENGTH_LONG)
+                    .setAction(android.R.string.ok, new View.OnClickListener() {
+                        @Override
+                        @TargetApi(Build.VERSION_CODES.M)
+                        public void onClick(View v) {
+                            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
+                        }
+                    });
+        } else {
+            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
+        }
+        return false;
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_READ_CONTACTS) {
+            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                listOfContacts = getAllContacts();
+            }
+        }
     }
 }
