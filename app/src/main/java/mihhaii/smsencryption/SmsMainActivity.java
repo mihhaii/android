@@ -19,14 +19,13 @@ import android.widget.EditText;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
-
-
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import crypto.RSA;
+import sftp.SftpProtocol;
 
 import static android.Manifest.permission.READ_CONTACTS;
 /**
@@ -65,6 +64,32 @@ public class SmsMainActivity extends Activity{
                 String number = map.get("Phone");
                 contactsTextView.setText("" + name + "<" + number + ">");
 
+                //TODO cautare cheie publica
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        try {
+                            SftpProtocol ftpObj = new SftpProtocol("188.24.40.250", 990, "admin", "admin");
+                            //search for file
+
+                            boolean result = ftpObj.listFTPFiles("/", "0727000671.txt");
+                            //ftpObj.uploadFTPFile(keyFile.getPath(), "0727000671.txt", "/");
+                            //  ftpobj.downloadFTPFile("Shruti.txt", "/users/shruti/Shruti.txt");
+                            //  System.out.println("FTP File downloaded successfully");
+                            //  boolean result = ftpobj.listFTPFiles("/users/shruti", "shruti.txt");
+                            //  System.out.println(result);
+                            ftpObj.disconnect();
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                }).start();
+
+
             }
 
 
@@ -73,23 +98,21 @@ public class SmsMainActivity extends Activity{
         send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EditText textEdit = (EditText)findViewById(R.id.smsTextField);
-                if(!textEdit.getText().toString().isEmpty()){
+                EditText textEdit = (EditText) findViewById(R.id.smsTextField);
+                if (!textEdit.getText().toString().isEmpty()) {
 
                     KeyPair keyPair = RSA.generate();
                     String encryptedText = RSA.encryptToBase64(keyPair.getPublic(), textEdit.getText().toString());
 
                     Log.d("Encrypted", encryptedText);
-                    Log.d("Decrypted",RSA.decryptFromBase64(keyPair.getPrivate(), encryptedText));
+                    Log.d("Decrypted", RSA.decryptFromBase64(keyPair.getPrivate(), encryptedText));
 
-                    sendSMS(encryptedText,"5556");
+                    sendSMS(encryptedText, "5556");
 
                 }
 
             }
         });
-
-
 
 
     }
