@@ -1,13 +1,17 @@
 package mihhaii.smsencryption;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
@@ -43,8 +47,9 @@ public class KeyGeneratorActivity extends Activity {
 
         private Button registerKeys;
 
-
         private static final int REQUEST_SEND_SMS = 12;
+
+        private static final int REQUEST_READ_SMS = 13;
 
         private String myNumber;
 
@@ -92,18 +97,6 @@ public class KeyGeneratorActivity extends Activity {
                                     showKeyPair();
                                 }
                             });
-//                            runOnUiThread(new Runnable() {
-//                                @Override
-//                                public void run() {
-//                                    try {
-//                                      //  Thread.sleep(3000);
-//                                    //    Intent intent = new Intent(KeyGeneratorActivity.this, SmsMainActivity.class);
-//                                   //     startActivity(intent);
-//                                    } catch (InterruptedException e) {
-//                                        e.printStackTrace();
-//                                    }
-//                                }
-//                            });
 
                         }
                     }).start();
@@ -127,9 +120,23 @@ public class KeyGeneratorActivity extends Activity {
                                 mayRequestNumber();
                                 //// TODO: 2/11/2017  Inlocuire numar cu numarul telefonului.
                                 //File keyFile = generateFileOnSD(myNumber,keyPair.getPublic().getEncoded().toString());
-                                File keyFile = generateFileOnSD("0727000671",Preferences.getString(Preferences.RSA_PUBLIC_KEY));
 
-                                  ftpObj.uploadFTPFile(keyFile.getPath(),"0727000671.txt", "/");
+                                int permissionCheck = ContextCompat.checkSelfPermission(KeyGeneratorActivity.this,
+                                        Manifest.permission.READ_SMS);
+                                if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                                    ActivityCompat.requestPermissions(KeyGeneratorActivity.this,
+                                            new String[]{Manifest.permission.READ_SMS},
+                                            REQUEST_READ_SMS); // define this constant yourself
+                                } else {
+                                    // you have the permission
+                                }
+
+                                TelephonyManager tMgr = (TelephonyManager) KeyGeneratorActivity.this.getSystemService(Context.TELEPHONY_SERVICE);
+                                String mPhoneNumber = tMgr.getLine1Number();
+                                File keyFile = generateFileOnSD(mPhoneNumber, Preferences.getString(Preferences.RSA_PUBLIC_KEY));
+
+                                ftpObj.uploadFTPFile(keyFile.getPath(),mPhoneNumber +".txt", "/");
+                                // ftpObj.uploadFTPFile(keyFile.getPath(),"0727000671.txt", "/");
                                 //  ftpobj.downloadFTPFile("Shruti.txt", "/users/shruti/Shruti.txt");
                                 //  System.out.println("FTP File downloaded successfully");
                                 //  boolean result = ftpobj.listFTPFiles("/users/shruti", "shruti.txt");
@@ -184,8 +191,6 @@ public class KeyGeneratorActivity extends Activity {
             outputStream.write(sBody.getBytes());
             outputStream.close();
 
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -224,10 +229,17 @@ public class KeyGeneratorActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_SEND_SMS) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-               myNumber = getMyPhoneNumber();
-            }
+
+        switch(requestCode){
+            case REQUEST_SEND_SMS:
+                if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    myNumber = getMyPhoneNumber();
+                }
+                break;
+            case REQUEST_READ_SMS:
+                if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    myNumber = getMyPhoneNumber();
+                }
         }
     }
 

@@ -19,11 +19,24 @@ import android.widget.EditText;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+import org.apache.commons.net.util.Base64;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import crypto.Crypto;
 import crypto.RSA;
 import sftp.SftpProtocol;
 
@@ -36,6 +49,9 @@ public class SmsMainActivity extends Activity{
     private AutoCompleteTextView contactsTextView;
     private ArrayList<Map<String,String>> listOfContacts;
     private static final int REQUEST_READ_CONTACTS = 13;
+    private String phoneNumber = "0727000671";
+    private File keyFile;
+    private String publicKey;
 
 
 
@@ -65,22 +81,19 @@ public class SmsMainActivity extends Activity{
                 contactsTextView.setText("" + name + "<" + number + ">");
 
                 //TODO cautare cheie publica
-
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
 
                         try {
-                            SftpProtocol ftpObj = new SftpProtocol("188.24.40.250", 990, "admin", "admin");
+                            SftpProtocol ftpObject = new SftpProtocol("188.24.40.250", 990, "admin", "admin");
                             //search for file
-
-                            boolean result = ftpObj.listFTPFiles("/", "0727000671.txt");
-                            //ftpObj.uploadFTPFile(keyFile.getPath(), "0727000671.txt", "/");
-                            //  ftpobj.downloadFTPFile("Shruti.txt", "/users/shruti/Shruti.txt");
-                            //  System.out.println("FTP File downloaded successfully");
-                            //  boolean result = ftpobj.listFTPFiles("/users/shruti", "shruti.txt");
-                            //  System.out.println(result);
-                            ftpObj.disconnect();
+                            if(receiverHasKeyStored(ftpObject,phoneNumber)){
+                                ftpObject.downloadFTPFile(phoneNumber + ".txt", getApplicationContext().getFilesDir() + "/Keys/" + phoneNumber + ".txt");
+                                keyFile = new File(getApplicationContext().getFilesDir(), "Keys/" + phoneNumber + ".txt");
+                                parseKey(keyFile);
+                            }
+                            ftpObject.disconnect();
 
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -88,11 +101,7 @@ public class SmsMainActivity extends Activity{
                     }
 
                 }).start();
-
-
             }
-
-
         });
         Button send = (Button) findViewById(R.id.send_button);
         send.setOnClickListener(new View.OnClickListener() {
@@ -102,13 +111,11 @@ public class SmsMainActivity extends Activity{
                 if (!textEdit.getText().toString().isEmpty()) {
 
                     KeyPair keyPair = RSA.generate();
-                    String encryptedText = RSA.encryptToBase64(keyPair.getPublic(), textEdit.getText().toString());
 
-                    Log.d("Encrypted", encryptedText);
-                    Log.d("Decrypted", RSA.decryptFromBase64(keyPair.getPrivate(), encryptedText));
+                    String encryptedText = RSA.encryptToBase64(getPublicKey(), textEdit.getText().toString());
+
 
                     sendSMS(encryptedText, "5556");
-
                 }
 
             }
@@ -117,9 +124,53 @@ public class SmsMainActivity extends Activity{
 
     }
 
+    private Key getPublicKey() {
+        byte[] publicBytes = Base64.decodeBase64(publicKey);
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
+        KeyFactory keyFactory = null;
+        PublicKey publicK = null;
+        try {
+            keyFactory = KeyFactory.getInstance("RSA");
+            publicK = keyFactory.generatePublic(keySpec);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+        return publicK;
+    }
+
+    private void parseKey(File keyFile) {
+
+        StringBuilder text = new StringBuilder();
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(keyFile));
+            String line;
+            while ((line = br.readLine()) != null) {
+                text.append(line);
+                text.append('\n');
+            }
+            br.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        publicKey = Crypto.stripPublicKeyHeaders(text.toString());
+    }
+
+
+
+    private boolean receiverHasKeyStored(SftpProtocol ftp, String phoneNumber){
+        try {
+            return  ftp.listFTPFiles("/", phoneNumber + ".txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     void sendSMS(String text,String number)
     {
-
         try {
             SmsManager sms = SmsManager.getDefault();
             sms.sendTextMessage(number, null, text, null, null);
@@ -127,8 +178,6 @@ public class SmsMainActivity extends Activity{
         }catch (Exception e ){
             Toast.makeText(getApplicationContext(),"SMS Failed sending",Toast.LENGTH_LONG).show();
         }
-
-
 
 // last two parameters in sendTextMessage method are PendingInten
 // sentIntent & deliveryIntent.
@@ -152,7 +201,7 @@ public class SmsMainActivity extends Activity{
                     person.put("Name",allPeople.getString(allPeople.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)));
                     person.put("Phone", allPeople.getString(allPeople.getColumnIndex(ContactsContract.Contacts._ID)));
                     contactList.add(person);
-                
+
                 }
             }
         } catch (NullPointerException e) {
@@ -169,14 +218,18 @@ public class SmsMainActivity extends Activity{
             return true;
         }
         if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(findViewById(R.id.mainLayout), R.string.permission_rationale, Snackbar.LENGTH_LONG)
-                    .setAction(android.R.string.ok, new View.OnClickListener() {
-                        @Override
-                        @TargetApi(Build.VERSION_CODES.M)
-                        public void onClick(View v) {
-                            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
-                        }
-                    });
+            try {
+                Snackbar.make(findViewById(R.id.mainLayout), R.string.permission_rationale, Snackbar.LENGTH_LONG)
+                        .setAction(android.R.string.ok, new View.OnClickListener() {
+                            @Override
+                            @TargetApi(Build.VERSION_CODES.M)
+                            public void onClick(View v) {
+                                requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
+                            }
+                        });
+            }catch(Exception e){
+                e.printStackTrace();
+            }
         } else {
             requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
         }
